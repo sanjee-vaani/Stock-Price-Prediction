@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ML-22 · Stock Price Prediction</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #0D0F14;
+      --surface:    #151820;
+      --surface2:   #1C2030;
+      --border:     #2A2E3E;
+      --border2:    #353A4E;
+      --fg:         #E8EAF0;
+      --fg2:        #C4C8DC;
+      --muted:      #8B90B0;
+      --accent:     #4F8EF7;
+      --accent-dim: #1E3A6E;
+      --green:      #3DD68C;
+      --amber:      #F5A623;
+      --red:        #F25C5C;
+      --mono:       'JetBrains Mono', monospace;
+      --sans:       'Syne', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--sans);
+      font-size: 15px;
+      min-height: 100vh;
+      padding: 48px 24px 80px;
+    }
+
+    .container { max-width: 960px; margin: 0 auto; }
+
+    /* ── Header ── */
+    header {
+      margin-bottom: 40px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--border);
+    }
+    .badge {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--accent);
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      border-radius: 20px;
+      padding: 5px 14px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-size: 38px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--fg);
+      line-height: 1.1;
+    }
+    h1 em { font-style: normal; color: var(--accent); }
+    .subtitle {
+      margin-top: 12px;
+      font-size: 16px;
+      color: var(--fg2);
+      font-weight: 400;
+      max-width: 540px;
+      line-height: 1.6;
+    }
+
+    /* ── Input Card ── */
+    .input-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+      margin-bottom: 28px;
+    }
+    .input-card-title {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 20px;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr 0.8fr;
+      gap: 16px;
+      align-items: end;
+    }
+    .form-group label {
+      display: block;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--fg2);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 11px 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      font-family: var(--mono);
+      font-size: 14px;
+      color: var(--fg);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-group input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79,142,247,0.12);
+    }
+    .form-group input::placeholder { color: var(--muted); }
+    input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.5); }
+
+    .btn-row { margin-top: 22px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+    .btn {
+      padding: 12px 32px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn:hover  { background: #6BA3FA; }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { background: var(--border2); color: var(--muted); cursor: not-allowed; transform: none; }
+
+    .status {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .status.running { color: var(--accent); }
+    .status.error   { color: var(--red); }
+    .status.done    { color: var(--green); }
+
+    /* ── Results ── */
+    #results-section { display: none; }
+
+    /* ── Metrics ── */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--accent);
+    }
+    .metric-card.good::before { background: var(--green); }
+    .metric-card.warn::before { background: var(--amber); }
+    .metric-card.bad::before  { background: var(--red); }
+
+    .metric-short {
+      font-family: var(--mono);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--accent);
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+    .metric-fullname {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 400;
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+    .metric-val {
+      font-family: var(--mono);
+      font-size: 28px;
+      font-weight: 500;
+      color: var(--fg);
+      letter-spacing: -0.02em;
+    }
+    .metric-card.good .metric-val { color: var(--green); }
+    .metric-card.warn .metric-val { color: var(--amber); }
+    .metric-card.bad  .metric-val { color: var(--red); }
+
+    /* ── Chart Card ── */
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .card-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .card-title {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--fg);
+    }
+    .card-sub {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    #chart-img {
+      width: 100%;
+      border-radius: 8px;
+      display: block;
+      border: 1px solid var(--border);
+    }
+
+    /* ── Table Card ── */
+    .table-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .table-card-header {
+      padding: 20px 24px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+    .table-scroll { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--mono);
+      font-size: 14px;
+    }
+    thead th {
+      padding: 14px 22px;
+      text-align: left;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--fg2);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+    tbody td {
+      padding: 14px 22px;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--surface2); }
+
+    td.num-col   { color: var(--fg2); font-size: 13px; width: 40px; }
+    td.date-col  { color: var(--fg2); }
+    td.price-col { color: var(--fg); font-weight: 500; font-size: 15px; }
+    td.low-col   { color: var(--red); }
+    td.high-col  { color: var(--green); }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 56px;
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Loader ── */
+    .loader {
+      display: inline-block;
+      width: 13px; height: 13px;
+      border: 2px solid var(--border2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ── */
+    @media (max-width: 680px) {
+      .form-grid    { grid-template-columns: 1fr 1fr; }
+      .metrics-grid { grid-template-columns: 1fr; }
+      h1            { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ── Header ── -->
+  <header>
+    <div class="badge">ML-22 · ARIMA / SARIMA · Time Series</div>
+    <h1>Stock Price <em>Prediction</em></h1>
+    <p class="subtitle">Enter a stock ticker and date range. The model trains on historical data and predicts prices for the next 30 days.</p>
+  </header>
+
+  <!-- ── Input ── -->
+  <div class="input-card">
+    <div class="input-card-title">Model Configuration</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Stock Ticker</label>
+        <input type="text" id="ticker" value="RELIANCE.NS" placeholder="e.g. RELIANCE.NS" />
+      </div>
+      <div class="form-group">
+        <label>Start Date</label>
+        <input type="date" id="start" value="2021-01-01" />
+      </div>
+      <div class="form-group">
+        <label>End Date</label>
+        <input type="date" id="end" value="2024-12-31" />
+      </div>
+      <div class="form-group">
+        <label>Forecast Days</label>
+        <input type="number" id="days" value="30" min="7" max="180" />
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="run-btn" onclick="runPipeline()">▶ &nbsp;Run Prediction</button>
+      <span class="status" id="status-msg"></span>
+    </div>
+  </div>
+
+  <!-- ── Results ── -->
+  <div id="results-section">
+
+    <!-- Metrics -->
+    <div class="metrics-grid" id="metrics-grid"></div>
+
+    <!-- Chart -->
+    <div class="chart-card">
+      <div class="card-header">
+        <span class="card-title">Price Forecast Chart</span>
+        <span class="card-sub" id="chart-label">—</span>
+      </div>
+      <img id="chart-img" src="" alt="Forecast Chart" />
+    </div>
+
+    <!-- Table -->
+    <div class="table-card">
+      <div class="table-card-header">
+        <span class="card-title">30-Day Predicted Prices</span>
+        <span class="card-sub" id="table-label">—</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Date</th>
+              <th>Predicted Price (₹)</th>
+              <th>Lower Bound — 95% CI</th>
+              <th>Upper Bound — 95% CI</th>
+            </tr>
+          </thead>
+          <tbody id="forecast-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /results -->
+
+  <footer>ML-22 &nbsp;·&nbsp; Stock Price Prediction &nbsp;·&nbsp; 3rd Year Mini Project</footer>
+</div>
+
+<script>
+  async function runPipeline() {
+    const btn    = document.getElementById("run-btn");
+    const status = document.getElementById("status-msg");
+
+    const ticker = document.getElementById("ticker").value.trim().toUpperCase();
+    const start  = document.getElementById("start").value;
+    const end    = document.getElementById("end").value;
+    const days   = document.getElementById("days").value;
+
+    if (!ticker) { alert("Please enter a stock ticker."); return; }
+
+    btn.disabled = true;
+    status.className = "status running";
+    status.innerHTML = `<span class="loader"></span>Training ARIMA on ${ticker} — this takes ~30–60 sec`;
+    document.getElementById("results-section").style.display = "none";
+
+    try {
+      const res  = await fetch("/run", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ ticker, start, end, days }),
+      });
+      const data = await res.json();
+
+      if (data.status === "error") {
+        status.className   = "status error";
+        status.textContent = "✖  " + data.message;
+        btn.disabled = false;
+        return;
+      }
+
+      // ── Chart ──
+      document.getElementById("chart-img").src = "data:image/png;base64," + data.chart;
+      document.getElementById("chart-label").textContent = `${ticker} · ${days} days`;
+      document.getElementById("table-label").textContent = `${data.table.length} trading days`;
+
+      // ── Metrics ──
+      const m = data.metrics;
+      const mapeClass = m.MAPE < 5 ? "good" : m.MAPE < 15 ? "warn" : "bad";
+      document.getElementById("metrics-grid").innerHTML = `
+        <div class="metric-card">
+          <div class="metric-short">RMSE</div>
+          <div class="metric-fullname">Root Mean Square Error</div>
+          <div class="metric-val">${m.RMSE.toFixed(2)}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-short">MAE</div>
+          <div class="metric-fullname">Mean Absolute Error</div>
+          <div class="metric-val">${m.MAE.toFixed(2)}</div>
+        </div>
+        <div class="metric-card ${mapeClass}">
+          <div class="metric-short">MAPE</div>
+          <div class="metric-fullname">Mean Absolute Percentage Error</div>
+          <div class="metric-val">${m.MAPE.toFixed(2)}%</div>
+        </div>
+      `;
+
+      // ── Table ──
+      const tbody = document.getElementById("forecast-body");
+      tbody.innerHTML = data.table.map((row, i) => `
+        <tr>
+          <td class="num-col">${String(i + 1).padStart(2, "0")}</td>
+          <td class="date-col">${row.date}</td>
+          <td class="price-col">₹ ${parseFloat(row.forecast).toFixed(2)}</td>
+          <td class="low-col">₹ ${parseFloat(row.lower_95).toFixed(2)}</td>
+          <td class="high-col">₹ ${parseFloat(row.upper_95).toFixed(2)}</td>
+        </tr>
+      `).join("");
+
+      document.getElementById("results-section").style.display = "block";
+      status.className   = "status done";
+      status.textContent = `✔  Prediction complete — ${ticker} · ${days}-day forecast`;
+
+    } catch (err) {
+      status.className   = "status error";
+      status.textContent = "✖  Request failed: " + err.message;
+    }
+
+    btn.disabled = false;
+  }
+</script>
+</body>
+</html>
