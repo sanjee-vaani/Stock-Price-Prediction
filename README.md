@@ -89,3 +89,21 @@ http://localhost:5000
 ## Author
 
 **Sanjeevani Katakamshetty**
+
+## 📸 Screenshots
+
+### 🏠 Home Page
+
+![Home Page](screenshots/home.png)
+
+---
+
+### 📈 Prediction Result
+
+![Prediction Result](screenshots/prediction.png)
+
+---
+
+### 📊 Forecast Graph
+
+![Forecast Graph](screenshots/forecast.png)
